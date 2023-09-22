@@ -1,0 +1,40 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no,  initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+</head>
+<body>
+<main>
+    <h1>Java Virtual Machine Analyzer</h1>
+    <form action="files.html" method="post" enctype="multipart/form-data">
+        <p>Please select the data: </p>
+        <!--input type="text" name="text" placeholder="gc.log"-->
+        <input type="radio" id="heap" name="radiotype" value="HEAP">
+        <label for="heap">Heap Dump</label><br>
+        <input type="radio" id="thread" name="radiotype" value="THREAD">
+        <label for="thread">Thread Dump</label><br>
+        <input type="radio" id="gc" name="radiotype" value="GC">
+        <label for="gc">GC Log</label>
+        <input type="file" name="file">
+        <button type="submit">Submit</button>
+    </form>
+
+<style>
+    main {
+        margin: 0 auto;
+        width: max-content;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    body {
+      font-family: sans-serif;
+    }
+</style>
+</main>
+</body>
+</html>
