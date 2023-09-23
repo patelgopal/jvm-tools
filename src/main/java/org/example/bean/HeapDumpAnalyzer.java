@@ -1,16 +1,20 @@
 package org.example.bean;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import java.io.*;
 import  java.util.*;
 
 @ApplicationScoped
 public class HeapDumpAnalyzer {
+    @ConfigProperty(name = "heap.location", defaultValue = "/home/jboss/heap/")
+    String heapLocation;
     private StringBuffer stringBuffer = new StringBuffer();
 
     public String fileParse(InputStream inputStream) throws Exception {
         String uuid = UUID.randomUUID().toString();
-        String name = "/home/jboss/heap/"+uuid;
+        String name = heapLocation+uuid;
         File file = new File(name);
         if(!file.exists()){
             file.mkdir();
@@ -29,7 +33,8 @@ public class HeapDumpAnalyzer {
         String command = System.getenv("MAT_HOME")+"/ParseHeapDump.sh "+file+" -verbose -unzip org.eclipse.mat.api:overview";
         System.out.println(command);
         Process process = Runtime.getRuntime().exec(command);
-        return file;
+        System.out.println(new String(process.getInputStream().readAllBytes()));
+        return file+"_System_Overview/";
     }
 
 

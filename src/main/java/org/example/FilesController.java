@@ -7,19 +7,24 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.example.bean.GcAnalyzer;
 import org.example.bean.HeapDumpAnalyzer;
 import org.jboss.resteasy.annotations.providers.multipart.MultipartForm;
 import org.jboss.resteasy.annotations.providers.multipart.PartType;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import java.io.*;
-import java.util.UUID;
+import java.net.URI;
+import java.util.*;
 
 @ApplicationScoped
-@Path("files.html")
+@Path("/")
 @Produces(MediaType.TEXT_HTML)
 public class FilesController {
-    @Location("files.html")
+    @Location("index.html")
     Template template;
 
     @Location("report.html")
@@ -31,72 +36,45 @@ public class FilesController {
     @Inject
     GcAnalyzer gcAnalyzer;
 
+    @ConfigProperty(name = "heap.location", defaultValue = "/home/jboss/heap/")
+    String heapLocation;
+
+    public static List<File> dirList = new ArrayList<>();
+
+    private String homeLink = "<div style=\"" +
+            "margin-bottom: 6px;\"><a href=\"/\"" +
+            "style=\"font-weight:bold\">Home</a></div>";
+
     @GET
     public TemplateInstance get(){
         return template.instance();
     }
 
-/*    @POST
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public TemplateInstance upload(Map<String, InputStream> inputs) throws IOException {
-        for(Map.Entry<String,InputStream> entry: inputs.entrySet()){
-            System.out.printf("Key: %s; Value: %s", entry.getKey(),new String(entry.getValue().readAllBytes()));
-        }
-        //System.out.printf("Input: %s", new String(inputStream.readAllBytes()));
-        return report.instance();
-    }*/
-
-/*    @POST
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public TemplateInstance upload(@MultipartForm MultipartInput inputs) throws IOException {
-        for (InputPart part : inputs.getParts()) {
-            System.err.printf("Headers %s\n", part.getHeaders()
-                    .getFirst("Content-Disposition"));
-            System.err.printf("Body %s\n",part.getBodyAsString());
-            part.getHeaders().containsValue("file");
-        }
-        return report.instance();
-    }*/
-
     @POST
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.TEXT_HTML)
-    public String upload(@MultipartForm FileUploadInput inputs) throws Exception {
+    public Response upload(@MultipartForm FileUploadInput inputs) throws Exception {
 
         System.err.printf(">>>\n");
         System.out.printf("Analysis: %s\n",inputs.radiotype);
         System.out.printf("File: %s\n",inputs.inputStream.available());
         System.err.printf("\n<<<");
 
-        /*
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        PrintStream printStream = new PrintStream(byteArrayOutputStream);
-        PrintStream stdOut = System.out;
-        System.setOut(printStream);
-        Main.main(new String[]{inputs.file.getAbsolutePath(),"-c"});
-
-        BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(byteArrayOutputStream.toByteArray())));
-        StringBuffer stringBuffer = new StringBuffer();
-        String line = "";
-        while((line = br.readLine()) != null){
-            stringBuffer.append(line);
-            stringBuffer.append("<br>");
-        }
-        System.setOut(stdOut);
-        return stringBuffer.toString();
-        */
         String output = "";
         if(inputs.radiotype.equals("GC")){
             output = gcAnalyzer.initGcDump(getFile(inputs.inputStream));
         }else if (inputs.radiotype.equals("HEAP")){
             output = heapDumpAnalyzer.initHeapDump(getFile(inputs.inputStream));
+            dirList.add(new File(output).getParentFile());
+            addHomeLink(new File(output));
+            return Response.status(301).location(URI.create(output)).build();
         }
-        return output;
+        return Response.ok().entity(output).build();
     }
 
     public String getFile(InputStream inputStream) throws Exception {
         String uuid = UUID.randomUUID().toString();
-        String name = "/home/jboss/heap/"+uuid;
+        String name = heapLocation+uuid;
         File file = new File(name);
         if(!file.exists()){
             file.mkdir();
@@ -109,7 +87,7 @@ public class FilesController {
             }
             fileOutputStream.flush();
         }
-        return name;
+        return name+"/"+uuid;
     }
 
     public static class FileUploadInput {
@@ -122,5 +100,34 @@ public class FilesController {
 
         @FormParam("radiotype")
         public String radiotype;
+    }
+
+    public void addHomeLink(File mainDir) throws Exception{
+        Arrays.stream(mainDir.listFiles()).forEach(file -> {
+            if (file.isDirectory()) {
+                try {
+                    addHomeLink(file);
+                }
+                catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                if (file.getName().endsWith(".html")){
+                    Document document = null;
+                    try {
+                        document = Jsoup.parse(file, "UTF-8");
+                        document.body().children().get(0).before(homeLink);
+                        try (FileOutputStream fileOutputStream = new FileOutputStream(file)){
+                            fileOutputStream.write(document.html().getBytes());
+                        }catch (Exception exception) {
+                            exception.printStackTrace();
+                        }
+                    }
+                    catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        });
     }
 }
