@@ -27,7 +27,7 @@ public class FilesController {
     @Location("index.html")
     Template template;
 
-    @Location("report.html")
+    @Location("thread-index.html")
     Template report;
 
     @Inject
@@ -48,6 +48,12 @@ public class FilesController {
     @GET
     public TemplateInstance get(){
         return template.instance();
+    }
+
+    @GET
+    @Path("thread")
+    public TemplateInstance getThread(){
+        return report.instance();
     }
 
     @POST
