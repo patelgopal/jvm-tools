@@ -7,21 +7,33 @@ import java.io.*;
 
 @ApplicationScoped
 public class GcAnalyzer {
-    public String initGcDump(String path) throws IOException{
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        PrintStream printStream = new PrintStream(byteArrayOutputStream);
-        PrintStream stdOut = System.out;
-        System.setOut(printStream);
-        Main.main(new String[]{ path,"-c"});
 
-        BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(byteArrayOutputStream.toByteArray())));
-        StringBuffer stringBuffer = new StringBuffer();
-        String line = "";
-        while((line = br.readLine()) != null){
-            stringBuffer.append(line);
-            stringBuffer.append("<br>");
+    public String initGcDumpRaw(String path) throws IOException {
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        try (PrintStream ps = new PrintStream(byteArrayOutputStream, true);
+             BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(byteArrayOutputStream.toByteArray())))) {
+
+            // Redirect stdout
+            System.setOut(ps);
+
+            // Run GarbageCat
+            Main.main(new String[]{path, "-c"});
+
+        } catch (Exception e) {
+            throw new IOException("Failed to analyze GC log", e);
+        } finally {
+            // Always restore original System.out
+            System.setOut(originalOut);
         }
-        System.setOut(stdOut);
-        return stringBuffer.toString();
+
+        // Convert captured output to string
+        return byteArrayOutputStream.toString();
+    }
+
+    public String initGcDump(String path) throws IOException {
+        String rawOutput = initGcDumpRaw(path);
+        return rawOutput.replace(System.lineSeparator(), "<br>");
     }
 }

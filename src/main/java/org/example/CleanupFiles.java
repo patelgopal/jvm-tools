@@ -6,34 +6,48 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.stream.Stream;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import io.quarkus.scheduler.Scheduled;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@ApplicationScoped              
+@ApplicationScoped
 public class CleanupFiles {
-    @ConfigProperty(name = "discard.files.older.than", defaultValue = "86400000")
+
+    @ConfigProperty(name = "discard.files.older.than", defaultValue = "86400000") // 1 day in milliseconds
     Long discardInterval;
-    @Scheduled(every="${cleanup.duration:86400s}")
-    void increment() throws IOException {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CleanupFiles.class);
+
+    @Scheduled(every = "${cleanup.duration:86400s}")
+    void cleanupOldFiles() {
+        long now = System.currentTimeMillis();
+        LOG.info("Cleanup Scheduler: {} directories before cleanup", FilesController.dirList.size());
+
         Iterator<File> iterator = FilesController.dirList.iterator();
-        System.out.println(">> Cleanup Scheduler: number of directories before cleanup: "+FilesController.dirList.size());
         while (iterator.hasNext()) {
             File file = iterator.next();
-            long currentTime = System.currentTimeMillis();
-            if (currentTime-file.lastModified() > discardInterval) {
-                Files.walk(Path.of(file.getAbsolutePath()))
-                        .sorted(Comparator.reverseOrder())
-                        .map(Path::toFile)
-                        .forEach(File::delete);
-                System.out.println("Cleaning up the file " + file.getAbsolutePath() );
-                iterator.remove();
-                    System.out.println("Removed file ^^");
+            long age = now - file.lastModified();
+
+            if (age > discardInterval) {
+                try (Stream<Path> paths = Files.walk(file.toPath())) {
+                    paths.sorted(Comparator.reverseOrder())
+                         .map(Path::toFile)
+                         .forEach(f -> {
+                             if (!f.delete()) {
+                                 LOG.warn("Failed to delete {}", f.getAbsolutePath());
+                             }
+                         });
+                    iterator.remove();
+                    LOG.info("Cleaned up and removed {}", file.getAbsolutePath());
+                } catch (IOException e) {
+                    LOG.error("Error while cleaning up {}", file.getAbsolutePath(), e);
+                }
             }
         }
-        System.out.println(">> Cleanup Scheduler: number of directories after cleanup: "+FilesController.dirList.size());
+        LOG.info("Cleanup Scheduler: {} directories after cleanup", FilesController.dirList.size());
     }
-
-
 }
