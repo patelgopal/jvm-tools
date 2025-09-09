@@ -1,40 +1,109 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no,  initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Java Virtual Machine Analyzer</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background-color: #f9fafb;
+      color: #111827;
+    }
+
+    main {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    fieldset {
+      border: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+    }
+
+    legend {
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .option input {
+      margin-right: 0.5rem;
+    }
+
+    label {
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      margin: 1rem 0;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background-color: #2563eb;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+  </style>
 </head>
 <body>
-<main>
+  <main>
     <h1>Java Virtual Machine Analyzer</h1>
     <form action="/" method="post" enctype="multipart/form-data">
-        <p>Please select the data: </p>
-        <!--input type="text" name="text" placeholder="gc.log"-->
-        <input type="radio" id="heap" name="radiotype" value="HEAP">
-        <label for="heap">Heap Dump</label><br>
-        <input type="radio" id="thread" name="radiotype" value="THREAD" onclick="window.location.href = '/thread';">
-        <label for="thread">Thread Dump</label><br>
-        <input type="radio" id="gc" name="radiotype" value="GC">
-        <label for="gc">GC Log</label>
-        <input type="file" name="file">
-        <button type="submit">Submit</button>
+      <fieldset>
+        <legend>Please select the data:</legend>
+        
+        <div class="option">
+          <input type="radio" id="heap" name="radiotype" value="HEAP" />
+          <label for="heap">Heap Dump</label>
+        </div>
+        
+        <div class="option">
+          <input type="radio" id="thread" name="radiotype" value="THREAD" onclick="window.location.href = '/thread';" />
+          <label for="thread">Thread Dump</label>
+        </div>
+        
+        <div class="option">
+          <input type="radio" id="gc" name="radiotype" value="GC" />
+          <label for="gc">GC Log</label>
+        </div>
+      </fieldset>
+      
+      <label for="file">Upload file:</label>
+      <input type="file" id="file" name="file" />
+      
+      <button type="submit">Submit</button>
     </form>
-
-<style>
-    main {
-        margin: 0 auto;
-        width: max-content;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 10px;
-    }
-
-    body {
-      font-family: sans-serif;
-    }
-</style>
-</main>
+  </main>
 </body>
 </html>
