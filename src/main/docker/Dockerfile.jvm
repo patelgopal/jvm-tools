@@ -77,9 +77,13 @@
 #   accessed directly. (example: "foo.example.com,bar.example.com")
 #
 ###
-FROM registry.access.redhat.com/ubi8/openjdk-17:1.16
+FROM registry.access.redhat.com/ubi9/openjdk-17:latest
 
 ENV LANGUAGE='en_US:en'
+
+USER 0
+RUN microdnf install -y unzip \
+    && microdnf clean all
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
 COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
@@ -87,13 +91,15 @@ COPY --chown=185 target/quarkus-app/*.jar /deployments/
 COPY --chown=185 target/quarkus-app/app/ /deployments/app/
 COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
-ADD mat/ /home/jboss/mat/
+ADD mat.zip /tmp
+RUN unzip -d /opt/jboss /tmp/mat.zip \
+    && rm /tmp/mat.zip
 
 EXPOSE 8080
 USER 185
 ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
-ENV MAT_HOME=/home/jboss/mat
+ENV MAT_HOME=/opt/jboss/mat
 
-ENTRYPOINT [ "/opt/jboss/container/java/run/run-java.sh" ]
+CMD [ "/opt/jboss/container/java/run/run-java.sh" ]
 
