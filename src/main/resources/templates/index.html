@@ -1,40 +1,243 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no,  initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Virtual Machine Analyzer</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f6fa;
+        color: #333;
+        margin: 0;
+        padding: 0;
+    }
+
+    main {
+        max-width: 800px;
+        margin: 40px auto;
+        background-color: #fff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+        text-align: center;
+        color: #2f3640;
+        margin-bottom: 30px;
+    }
+
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .card-row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .option-card {
+        flex: 1 1 45%;
+        min-width: 140px;
+        background-color: #f1f2f6;
+        padding: 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .option-card:hover {
+        background-color: #dcdde1;
+    }
+
+    .option-card.selected {
+        border: 2px solid #40739e;
+        background-color: #d1d8e0;
+    }
+
+    input[type="radio"] {
+        transform: scale(1.2);
+    }
+
+    .file-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .file-input-wrapper input[type="file"] {
+        display: none;
+    }
+
+    .file-input-label {
+        padding: 10px 18px;
+        background-color: #40739e;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .file-input-label:hover {
+        background-color: #273c75;
+    }
+
+    #fileName {
+        font-size: 0.9rem;
+        color: #2f3640;
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        background-color: #40739e;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    button:disabled {
+        background-color: #7f8fa6;
+        cursor: not-allowed;
+    }
+
+    @media (max-width: 600px) {
+        .option-card {
+            flex: 1 1 100%;
+        }
+    }
+</style>
 </head>
 <body>
 <main>
-    <h1>Java Virtual Machine Analyzer</h1>
-    <form action="/" method="post" enctype="multipart/form-data">
-        <p>Please select the data: </p>
-        <!--input type="text" name="text" placeholder="gc.log"-->
-        <input type="radio" id="heap" name="radiotype" value="HEAP">
-        <label for="heap">Heap Dump</label><br>
-        <input type="radio" id="thread" name="radiotype" value="THREAD" onclick="window.location.href = '/thread';">
-        <label for="thread">Thread Dump</label><br>
-        <input type="radio" id="gc" name="radiotype" value="GC">
-        <label for="gc">GC Log</label>
-        <input type="file" name="file">
-        <button type="submit">Submit</button>
-    </form>
+<h1>Java Virtual Machine Analyzer</h1>
 
-<style>
-    main {
-        margin: 0 auto;
-        width: max-content;
-    }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 10px;
-    }
+<form id="analyzerForm" action="/" method="post" enctype="multipart/form-data">
 
-    body {
-      font-family: sans-serif;
-    }
-</style>
+    <p><strong>Select the data to analyze:</strong></p>
+
+    <!-- Top row: Heap / GC -->
+    <div class="card-row">
+        <label class="option-card" data-type="HEAP">
+            <input type="radio" name="radiotype" value="HEAP">
+            Heap Dump
+        </label>
+
+        <label class="option-card" data-type="GC">
+            <input type="radio" name="radiotype" value="GC">
+            GC Log
+        </label>
+    </div>
+
+    <!-- Bottom row: Thread / Log Analyzer -->
+    <div class="card-row">
+        <label class="option-card" data-type="THREAD">
+            <input type="radio" name="radiotype" value="THREAD">
+            Thread Dump
+        </label>
+
+        <label class="option-card" data-type="LOG">
+            <input type="radio" name="radiotype" value="LOG">
+            Log Analyzer (LogReaper)
+        </label>
+    </div>
+
+    <div class="file-input-wrapper">
+        <label class="file-input-label" for="fileInput">Choose File</label>
+        <input type="file" id="fileInput" name="file">
+        <span id="fileName">No file chosen</span>
+    </div>
+
+    <button type="submit" id="submitBtn">Submit</button>
+</form>
 </main>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const submitBtn = document.getElementById('submitBtn');
+const fileNameSpan = document.getElementById('fileName');
+const optionCards = document.querySelectorAll('.option-card');
+const radios = document.querySelectorAll('input[type="radio"]');
+
+// Reset file input display
+function resetFileInput() {
+    fileInput.value = '';
+    fileNameSpan.textContent = 'No file chosen';
+}
+
+// Remove 'selected' class from all cards
+function clearSelection() {
+    optionCards.forEach(c => c.classList.remove('selected'));
+}
+
+// Clear all radio buttons
+function clearRadios() {
+    radios.forEach(r => r.checked = false);
+}
+
+// Reset the entire form
+function resetForm() {
+    resetFileInput();
+    submitBtn.disabled = true;
+    fileInput.disabled = true;
+    clearSelection();
+    clearRadios();
+}
+
+// Handle file input change
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        fileNameSpan.textContent = fileInput.files[0].name;
+    } else {
+        fileNameSpan.textContent = 'No file chosen';
+    }
+});
+
+// Handle radio selection
+optionCards.forEach(card => {
+    card.addEventListener('click', () => {
+        const value = card.dataset.type;
+        resetFileInput();
+        clearSelection();
+        card.classList.add('selected'); // highlight selected option
+
+        // Enable/disable file input and submit
+        if (value === 'HEAP' || value === 'GC') {
+            fileInput.disabled = false;
+            submitBtn.disabled = false;
+        } else {
+            fileInput.disabled = true;
+            submitBtn.disabled = true;
+        }
+
+        // Redirect immediately if THREAD or LOG
+        if (value === 'THREAD') {
+            window.location.href = '/thread';
+        } else if (value === 'LOG') {
+            window.location.href = 'http://localhost:8180/labs/logreaper';
+        }
+    });
+});
+
+// Reset form on load or back/forward navigation
+window.addEventListener('pageshow', (event) => {
+    resetForm();
+});
+</script>
 </body>
 </html>
+

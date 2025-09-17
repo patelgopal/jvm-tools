@@ -18,6 +18,7 @@ import org.jsoup.nodes.Document;
 
 import java.io.*;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @ApplicationScoped
@@ -46,13 +47,13 @@ public class FilesController {
             "style=\"font-weight:bold\">Home</a></div>";
 
     @GET
-    public TemplateInstance get(){
+    public TemplateInstance get() {
         return template.instance();
     }
 
     @GET
     @Path("thread")
-    public TemplateInstance getThread(){
+    public TemplateInstance getThread() {
         return report.instance();
     }
 
@@ -62,38 +63,53 @@ public class FilesController {
     public Response upload(@MultipartForm FileUploadInput inputs) throws Exception {
 
         System.err.printf(">>>\n");
-        System.out.printf("Analysis: %s\n",inputs.radiotype);
-        System.out.printf("File: %s\n",inputs.inputStream.available());
+        System.out.printf("Analysis: %s\n", inputs.radiotype);
+        System.out.printf("File: %s\n", inputs.inputStream.available());
         System.err.printf("\n<<<");
 
         String output = "";
-        if(inputs.radiotype.equals("GC")){
+        if (inputs.radiotype.equals("GC")) {
             output = gcAnalyzer.initGcDump(getFile(inputs.inputStream));
-        }else if (inputs.radiotype.equals("HEAP")){
+        } else if (inputs.radiotype.equals("HEAP")) {
             output = heapDumpAnalyzer.initHeapDump(getFile(inputs.inputStream));
-            dirList.add(new File(output).getParentFile());
-            addHomeLink(new File(output));
-            return Response.status(301).location(URI.create(output)).build();
+
+            File outputFile = new File(output);
+            File runDir = outputFile.getParentFile();
+
+            dirList.add(runDir);
+            addHomeLink(outputFile);
+            
+            //return Response.status(301).location(URI.create(output)).build();
+            // redirect to results/<uuid>
+            String uuid = runDir.getName();
+            URI redirectUri = URI.create("/results/" + uuid);
+
+            return Response.status(Response.Status.SEE_OTHER)
+                        .location(redirectUri)
+                        .build();
         }
         return Response.ok().entity(output).build();
     }
 
     public String getFile(InputStream inputStream) throws Exception {
         String uuid = UUID.randomUUID().toString();
-        String name = heapLocation+uuid;
-        File file = new File(name);
-        if(!file.exists()){
-            file.mkdir();
+
+        File dir = new File(heapLocation, uuid);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
-        try (FileOutputStream fileOutputStream = new FileOutputStream( new File(name+"/"+uuid))) {
+
+        File targetFile = new File(dir, uuid);
+
+        try (FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
             byte[] buffer = new byte[131072];
             int bytes;
             while ((bytes = inputStream.read(buffer)) > 0) {
                 fileOutputStream.write(buffer, 0, bytes);
             }
-            fileOutputStream.flush();
         }
-        return name+"/"+uuid;
+
+        return targetFile.getAbsolutePath();
     }
 
     public static class FileUploadInput {
@@ -108,28 +124,26 @@ public class FilesController {
         public String radiotype;
     }
 
-    public void addHomeLink(File mainDir) throws Exception{
+    public void addHomeLink(File mainDir) throws Exception {
         Arrays.stream(mainDir.listFiles()).forEach(file -> {
             if (file.isDirectory()) {
                 try {
                     addHomeLink(file);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             } else {
-                if (file.getName().endsWith(".html")){
-                    Document document = null;
+                if (file.getName().endsWith(".html")) {
+                    //Document document = null;
                     try {
-                        document = Jsoup.parse(file, "UTF-8");
+                        Document document = Jsoup.parse(file, "UTF-8");
                         document.body().children().get(0).before(homeLink);
-                        try (FileOutputStream fileOutputStream = new FileOutputStream(file)){
-                            fileOutputStream.write(document.html().getBytes());
-                        }catch (Exception exception) {
+                        try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
+                            fileOutputStream.write(document.html().getBytes(StandardCharsets.UTF_8));
+                        } catch (Exception exception) {
                             exception.printStackTrace();
                         }
-                    }
-                    catch (IOException e) {
+                    } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
