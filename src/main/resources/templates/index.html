@@ -143,7 +143,7 @@
         </label>
     </div>
 
-    <!-- Bottom row: Thread / Log Analyzer / GoAccess -->
+    <!-- Bottom row: Thread / LogReaper / GoAccess -->
     <div class="card-row">
         <label class="option-card" data-type="THREAD">
             <input type="radio" name="radiotype" value="THREAD">
@@ -157,10 +157,11 @@
 
         <label class="option-card" data-type="GOACCESS">
             <input type="radio" name="radiotype" value="GOACCESS">
-            Log Analyzer (GoAccess)
+            GoAccess
         </label>
     </div>
 
+    <!-- File input (enabled only for HEAP/GC or GoAccess) -->
     <div class="file-input-wrapper">
         <label class="file-input-label" for="fileInput">Choose File</label>
         <input type="file" id="fileInput" name="file">
@@ -178,23 +179,19 @@ const fileNameSpan = document.getElementById('fileName');
 const optionCards = document.querySelectorAll('.option-card');
 const radios = document.querySelectorAll('input[type="radio"]');
 
-// Reset file input display
 function resetFileInput() {
     fileInput.value = '';
     fileNameSpan.textContent = 'No file chosen';
 }
 
-// Remove 'selected' class from all cards
 function clearSelection() {
     optionCards.forEach(c => c.classList.remove('selected'));
 }
 
-// Clear all radio buttons
 function clearRadios() {
     radios.forEach(r => r.checked = false);
 }
 
-// Reset the entire form
 function resetForm() {
     resetFileInput();
     submitBtn.disabled = true;
@@ -218,10 +215,9 @@ optionCards.forEach(card => {
         const value = card.dataset.type;
         resetFileInput();
         clearSelection();
-        card.classList.add('selected'); // highlight selected option
+        card.classList.add('selected');
 
-        // Enable/disable file input and submit
-        if (value === 'HEAP' || value === 'GC') {
+        if (value === 'HEAP' || value === 'GC' || value === 'GOACCESS') {
             fileInput.disabled = false;
             submitBtn.disabled = false;
         } else {
@@ -229,20 +225,56 @@ optionCards.forEach(card => {
             submitBtn.disabled = true;
         }
 
-        // Redirect immediately if THREAD, LOG, or GoAccess
         if (value === 'THREAD') {
             window.location.href = '/thread';
         } else if (value === 'LOG') {
             window.location.href = 'http://localhost:8180/labs/logreaper';
-        } else if (value === 'GOACCESS') {
-            // Redirect to static GoAccess report
-            window.location.href = '/goaccess/report.html';
         }
     });
 });
 
+// Handle form submission
+document.getElementById('analyzerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const selected = document.querySelector('input[name="radiotype"]:checked');
+    if (!selected) return;
+
+    const type = selected.value;
+
+    if (type === 'GOACCESS') {
+        if (fileInput.files.length === 0) {
+            alert('Please choose a log file for GoAccess.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]); // upload actual file content
+        formData.append('fileName', fileInput.files[0].name);
+
+        try {
+            const resp = await fetch('/goaccess/run', {
+                method: 'POST',
+                body: formData
+            });
+
+            const text = await resp.text();
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = text;
+            const link = tempDiv.querySelector('a');
+            if (link) window.open(link.href, '_blank');
+        } catch (err) {
+            alert("Upload failed: " + err);
+        } finally {
+            resetForm();
+        }
+    } else {
+        e.target.submit(); // default submit for HEAP/GC
+        resetForm();
+    }
+});
+
 // Reset form on load or back/forward navigation
-window.addEventListener('pageshow', (event) => {
+window.addEventListener('pageshow', () => {
     resetForm();
 });
 </script>
