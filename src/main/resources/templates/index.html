@@ -143,7 +143,7 @@
         </label>
     </div>
 
-    <!-- Bottom row: Thread / Log Analyzer -->
+    <!-- Bottom row: Thread / Log Analyzer / GoAccess -->
     <div class="card-row">
         <label class="option-card" data-type="THREAD">
             <input type="radio" name="radiotype" value="THREAD">
@@ -153,6 +153,11 @@
         <label class="option-card" data-type="LOG">
             <input type="radio" name="radiotype" value="LOG">
             Log Analyzer (LogReaper)
+        </label>
+
+        <label class="option-card" data-type="GOACCESS">
+            <input type="radio" name="radiotype" value="GOACCESS">
+            Log Analyzer (GoAccess)
         </label>
     </div>
 
@@ -224,11 +229,14 @@ optionCards.forEach(card => {
             submitBtn.disabled = true;
         }
 
-        // Redirect immediately if THREAD or LOG
+        // Redirect immediately if THREAD, LOG, or GoAccess
         if (value === 'THREAD') {
             window.location.href = '/thread';
         } else if (value === 'LOG') {
             window.location.href = 'http://localhost:8180/labs/logreaper';
+        } else if (value === 'GOACCESS') {
+            // Redirect to static GoAccess report
+            window.location.href = '/goaccess/report.html';
         }
     });
 });
